@@ -456,9 +456,27 @@ if Enshu2DataLoader is not None and Enshu2ModelTester is not None:
         # 演習2のModelTester.train_modelに渡す前に、列名を大文字に戻す
         # 演習2のColumnTransformerが大文字の列名を期待しているため
         X_train_upper = X_train.copy()
-        X_train_upper.columns = (
-            X_train_upper.columns.str.capitalize()
-        )  # ★ 追加: 列名を大文字に変換
+        # X_train_upper.columns = X_train_upper.columns.str.capitalize() # ★ 修正: 単純な capitalize() では Age, Fare, SibSp, Parch が Age, Fare, Sibsp, Parch になる
+        # 演習2のColumnTransformerが期待する正確な列名リストに合わせて変換
+        # ログから ['Age', 'Fare', 'SibSp', 'Parch'] を期待していると推測
+        column_mapping = {
+            "pclass": "Pclass",
+            "sex": "Sex",
+            "age": "Age",
+            "sibsp": "SibSp",
+            "parch": "Parch",
+            "fare": "Fare",
+            "embarked": "Embarked",
+        }
+        X_train_upper.rename(
+            columns=column_mapping, inplace=True
+        )  # ★ 追加: マッピングに基づいて列名変換
+
+        # ★ 追加: 演習2の学習に渡す直前の列名を出力
+        print(
+            f"::notice::演習2クラス使用: 学習用データ(X_train_upper)の列名: {list(X_train_upper.columns)}",
+            file=sys.stdout,
+        )
 
         model = Enshu2ModelTester.train_model(
             X_train_upper, y_train
@@ -477,9 +495,26 @@ if Enshu2DataLoader is not None and Enshu2ModelTester is not None:
         )
         # 演習2クラス使用のテストでは、X_testも大文字列名に変換してからモデルに渡す必要がある
         X_test_upper = X_test.copy()
-        X_test_upper.columns = (
-            X_test_upper.columns.str.capitalize()
-        )  # ★ 追加: 列名を大文字に変換
+        # X_test_upper.columns = X_test_upper.columns.str.capitalize() # ★ 修正: 単純な capitalize() では Age, Fare, SibSp, Parch が Age, Fare, Sibsp, Parch になる
+        # 演習2のColumnTransformerが期待する正確な列名リストに合わせて変換
+        column_mapping = {
+            "pclass": "Pclass",
+            "sex": "Sex",
+            "age": "Age",
+            "sibsp": "SibSp",
+            "parch": "Parch",
+            "fare": "Fare",
+            "embarked": "Embarked",
+        }
+        X_test_upper.rename(
+            columns=column_mapping, inplace=True
+        )  # ★ 追加: マッピングに基づいて列名変換
+
+        # ★ 追加: 演習2の評価に渡す直前の列名を出力
+        print(
+            f"::notice::演習2クラス使用: 評価用データ(X_test_upper)の列名: {list(X_test_upper.columns)}",
+            file=sys.stdout,
+        )
 
         metrics = Enshu2ModelTester.evaluate_model(
             model, X_test_upper, y_test
@@ -517,9 +552,26 @@ if Enshu2DataLoader is not None and Enshu2ModelTester is not None:
 
         # 演習2クラス使用のテストでは、X_testも大文字列名に変換してからモデルに渡す必要がある
         X_test_upper = X_test.copy()
-        X_test_upper.columns = (
-            X_test_upper.columns.str.capitalize()
-        )  # ★ 追加: 列名を大文字に変換
+        # X_test_upper.columns = X_test_upper.columns.str.capitalize() # ★ 修正: 単純な capitalize() では Age, Fare, SibSp, Parch が Age, Fare, Sibsp, Parch になる
+        # 演習2のColumnTransformerが期待する正確な列名リストに合わせて変換
+        column_mapping = {
+            "pclass": "Pclass",
+            "sex": "Sex",
+            "age": "Age",
+            "sibsp": "SibSp",
+            "parch": "Parch",
+            "fare": "Fare",
+            "embarked": "Embarked",
+        }
+        X_test_upper.rename(
+            columns=column_mapping, inplace=True
+        )  # ★ 追加: マッピングに基づいて列名変換
+
+        # ★ 追加: ベースライン比較(演習2)に渡す直前の列名を出力
+        print(
+            f"::notice::演習2クラス使用: ベースライン比較用データ(X_test_upper)の列名: {list(X_test_upper.columns)}",
+            file=sys.stdout,
+        )
 
         # ベースラインモデルをロード
         # test_model.py から見て ../models/baseline_model.pkl のパス
