@@ -11,8 +11,10 @@ from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
-import sys # ★ 追加: ワークフローコマンド出力に必要
-from itertools import chain # ColumnTransformerのデバッグ情報に使用されているためインポート
+import sys  # ★ 追加: ワークフローコマンド出力に必要
+from itertools import (
+    chain,
+)  # ColumnTransformerのデバッグ情報に使用されているためインポート
 
 
 # Note: This script is designed to be run using the pytest framework.
@@ -24,12 +26,22 @@ from itertools import chain # ColumnTransformerのデバッグ情報に使用さ
 # テスト用データとモデルパスを定義
 DATA_PATH = os.path.join(os.path.dirname(__file__), "../data/Titanic.csv")
 MODEL_DIR = os.path.join(os.path.dirname(__file__), "../models")
-MODEL_PATH = os.path.join(MODEL_DIR, "titanic_model.pkl") # 現在のモデルの保存パス
-BASELINE_MODEL_PATH = os.path.join(MODEL_DIR, "baseline_model.pkl") # ★ 追加: ベースラインモデルの保存パス
+MODEL_PATH = os.path.join(MODEL_DIR, "titanic_model.pkl")  # 現在のモデルの保存パス
+BASELINE_MODEL_PATH = os.path.join(
+    MODEL_DIR, "baseline_model.pkl"
+)  # ★ 追加: ベースラインモデルの保存パス
 
 # ベースラインモデルの学習に使用した特徴量列名（小文字）
 # create_baseline_model.py と同じ定義である必要がある
-BASELINE_FEATURE_COLUMNS = ["pclass", "sex", "age", "sibsp", "parch", "fare", "embarked"]
+BASELINE_FEATURE_COLUMNS = [
+    "pclass",
+    "sex",
+    "age",
+    "sibsp",
+    "parch",
+    "fare",
+    "embarked",
+]
 TARGET_COLUMN = "survived"
 
 
@@ -42,54 +54,73 @@ def sample_data():
 
         try:
             titanic = fetch_openml("titanic", version=1, as_frame=True)
-            df = titanic.data # 特徴量データフレーム
-            df[TARGET_COLUMN] = titanic.target # 目的変数をデータフレームに追加
+            df = titanic.data  # 特徴量データフレーム
+            df[TARGET_COLUMN] = titanic.target  # 目的変数をデータフレームに追加
 
             # ロードしたデータフレームの列名を全て小文字に変換
-            df.columns = df.columns.str.lower() # ★ 修正: ここで列名を小文字に変換
+            df.columns = df.columns.str.lower()  # ★ 修正: ここで列名を小文字に変換
 
             # ベースラインモデルの学習に使用した必要なカラムのみを選択
             # 目的変数カラムも加えておく
             required_columns_with_target = BASELINE_FEATURE_COLUMNS + [TARGET_COLUMN]
 
             # 必要な列が存在するかチェックし、存在するものだけを選択
-            missing_cols = [col for col in required_columns_with_target if col not in df.columns]
+            missing_cols = [
+                col for col in required_columns_with_target if col not in df.columns
+            ]
             if missing_cols:
-                print(f"::error::ダウンロードしたデータに不足している列があります: {missing_cols}", file=sys.stderr)
-                pytest.fail(f"ダウンロードしたデータに不足している列があります: {missing_cols}")
+                print(
+                    f"::error::ダウンロードしたデータに不足している列があります: {missing_cols}",
+                    file=sys.stderr,
+                )
+                pytest.fail(
+                    f"ダウンロードしたデータに不足している列があります: {missing_cols}"
+                )
 
-            df = df[required_columns_with_target].copy() # 必要な列を選択し、コピーを作成してSettingWithCopyWarningを防ぐ
-
+            df = df[
+                required_columns_with_target
+            ].copy()  # 必要な列を選択し、コピーを作成してSettingWithCopyWarningを防ぐ
 
             # データディレクトリが存在しない場合は作成
             os.makedirs(os.path.dirname(DATA_PATH), exist_ok=True)
             df.to_csv(DATA_PATH, index=False)
-            print(f"::notice::データファイルをダウンロードして保存しました: {DATA_PATH}", file=sys.stdout) # ★ 追加: データ保存通知
+            print(
+                f"::notice::データファイルをダウンロードして保存しました: {DATA_PATH}",
+                file=sys.stdout,
+            )  # ★ 追加: データ保存通知
         except Exception as e:
-             print(f"::error::データファイルのダウンロードまたは保存に失敗しました: {e}", file=sys.stderr) # ★ 追加: エラー通知
-             pytest.fail(f"データファイルのダウンロードまたは保存に失敗しました: {e}")
+            print(
+                f"::error::データファイルのダウンロードまたは保存に失敗しました: {e}",
+                file=sys.stderr,
+            )  # ★ 追加: エラー通知
+            pytest.fail(f"データファイルのダウンロードまたは保存に失敗しました: {e}")
 
     # ローカルに保存されているデータファイルを読み込む
     data = pd.read_csv(DATA_PATH)
     # ロードしたデータの列名も小文字に統一（ダウンロード時と形式を合わせる）
-    data.columns = data.columns.str.lower() # ★ 修正: ここでも列名を小文字に変換
+    data.columns = data.columns.str.lower()  # ★ 修正: ここでも列名を小文字に変換
 
     # 必要な列のみを選択して返す（ファイルに保存されているデータに余分な列が含まれている可能性も考慮）
     required_columns_with_target = BASELINE_FEATURE_COLUMNS + [TARGET_COLUMN]
     # 必要な列が存在するかチェック
-    missing_cols = [col for col in required_columns_with_target if col not in data.columns]
+    missing_cols = [
+        col for col in required_columns_with_target if col not in data.columns
+    ]
     if missing_cols:
-         print(f"::error::ロードしたデータに不足している列があります: {missing_cols}", file=sys.stderr)
-         pytest.fail(f"ロードしたデータに不足している列があります: {missing_cols}")
+        print(
+            f"::error::ロードしたデータに不足している列があります: {missing_cols}",
+            file=sys.stderr,
+        )
+        pytest.fail(f"ロードしたデータに不足している列があります: {missing_cols}")
 
-    return data[required_columns_with_target].copy() # 必要な列を選択して返す
+    return data[required_columns_with_target].copy()  # 必要な列を選択して返す
 
 
 @pytest.fixture
 def preprocessor():
     """前処理パイプラインを定義"""
     # 数値カラムと文字列カラムを定義（列名を小文字に統一している想定）
-    numeric_features = ["age", "pclass", "sibsp", "parch", "fare"] # Pclass -> pclass
+    numeric_features = ["age", "pclass", "sibsp", "parch", "fare"]  # Pclass -> pclass
     categorical_features = ["sex", "embarked"]
 
     # 数値特徴量の前処理（欠損値補完と標準化）
@@ -112,10 +143,22 @@ def preprocessor():
     # ColumnTransformerに渡す特徴量列名は、ベースラインモデル学習時と同じである必要がある
     preprocessor = ColumnTransformer(
         transformers=[
-            ("num", numeric_transformer, [col for col in numeric_features if col in BASELINE_FEATURE_COLUMNS]), # BASELINE_FEATURE_COLUMNSに含まれるもののみ
-            ("cat", categorical_transformer, [col for col in categorical_features if col in BASELINE_FEATURE_COLUMNS]), # BASELINE_FEATURE_COLUMNSに含まれるもののみ
+            (
+                "num",
+                numeric_transformer,
+                [col for col in numeric_features if col in BASELINE_FEATURE_COLUMNS],
+            ),  # BASELINE_FEATURE_COLUMNSに含まれるもののみ
+            (
+                "cat",
+                categorical_transformer,
+                [
+                    col
+                    for col in categorical_features
+                    if col in BASELINE_FEATURE_COLUMNS
+                ],
+            ),  # BASELINE_FEATURE_COLUMNSに含まれるもののみ
         ],
-        remainder="drop", # 指定されていない列は削除
+        remainder="drop",  # 指定されていない列は削除
     )
 
     return preprocessor
@@ -127,17 +170,20 @@ def train_model(sample_data, preprocessor):
     # sample_dataフィクスチャから取得したデータは既に列名が小文字になっている想定
 
     # データの分割とラベル変換
-    X = sample_data.drop(TARGET_COLUMN, axis=1) # 列名を小文字に修正
-    y = sample_data[TARGET_COLUMN].astype(int) # 列名を小文字に修正
+    X = sample_data.drop(TARGET_COLUMN, axis=1)  # 列名を小文字に修正
+    y = sample_data[TARGET_COLUMN].astype(int)  # 列名を小文字に修正
     X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42 # random_stateを固定
+        X, y, test_size=0.2, random_state=42  # random_stateを固定
     )
 
     # モデルパイプラインの作成
     model = Pipeline(
         steps=[
             ("preprocessor", preprocessor),
-            ("classifier", RandomForestClassifier(n_estimators=100, random_state=42)), # random_stateを固定
+            (
+                "classifier",
+                RandomForestClassifier(n_estimators=100, random_state=42),
+            ),  # random_stateを固定
         ]
     )
 
@@ -152,7 +198,7 @@ def train_model(sample_data, preprocessor):
     # with open(MODEL_PATH, "wb") as f:
     #     pickle.dump(model, f)
 
-    return model, X_test, y_test # 学習済みモデルとテストデータを返す
+    return model, X_test, y_test  # 学習済みモデルとテストデータを返す
 
 
 def test_model_exists():
@@ -160,10 +206,17 @@ def test_model_exists():
     # test_model_accuracy_above_baseline で baseline_model.pkl をチェックするので、
     # このテストは titanic_model.pkl の存在確認として残しておきます。
     if not os.path.exists(MODEL_PATH):
-         print(f"::notice::モデルファイル (titanic_model.pkl) が存在しません。テストをスキップします。", file=sys.stdout) # ★ 追加: スキップ通知
-         pytest.skip("モデルファイル (titanic_model.pkl) が存在しないためスキップします")
-    print(f"::notice::モデルファイル (titanic_model.pkl) が存在します。", file=sys.stdout) # ★ 追加: 存在通知
-    assert os.path.exists(MODEL_PATH), "モデルファイル (titanic_model.pkl) が存在しません"
+        print(
+            f"::notice::モデルファイル (titanic_model.pkl) が存在しません。テストをスキップします。",
+            file=sys.stdout,
+        )  # ★ 追加: スキップ通知
+        pytest.skip("モデルファイル (titanic_model.pkl) が存在しないためスキップします")
+    print(
+        f"::notice::モデルファイル (titanic_model.pkl) が存在します。", file=sys.stdout
+    )  # ★ 追加: 存在通知
+    assert os.path.exists(
+        MODEL_PATH
+    ), "モデルファイル (titanic_model.pkl) が存在しません"
 
 
 def test_model_accuracy(train_model):
@@ -175,7 +228,9 @@ def test_model_accuracy(train_model):
     accuracy = accuracy_score(y_test, y_pred)
 
     # ★ 追加: GitHub Actions の notice コマンド形式で精度を表示
-    print(f"::notice::test_model_accuracy: モデル精度 = {accuracy:.4f}", file=sys.stdout)
+    print(
+        f"::notice::test_model_accuracy: モデル精度 = {accuracy:.4f}", file=sys.stdout
+    )
 
     # Titanicデータセットでは0.75以上の精度が一般的に良いとされる
     assert accuracy >= 0.75, f"モデルの精度が低すぎます: {accuracy:.4f}"
@@ -192,8 +247,10 @@ def test_model_inference_time(train_model):
     inference_time = end_time - start_time
 
     # ★ 追加: GitHub Actions の notice コマンド形式で推論時間を表示
-    print(f"::notice::test_model_inference_time: 推論時間 = {inference_time:.4f}秒", file=sys.stdout)
-
+    print(
+        f"::notice::test_model_inference_time: 推論時間 = {inference_time:.4f}秒",
+        file=sys.stdout,
+    )
 
     # 推論時間が1秒未満であることを確認
     assert inference_time < 1.0, f"推論時間が長すぎます: {inference_time:.4f}秒"
@@ -204,10 +261,10 @@ def test_model_reproducibility(sample_data, preprocessor):
     # sample_dataフィクスチャから取得したデータは既に列名が小文字になっている想定
 
     # データの分割
-    X = sample_data.drop(TARGET_COLUMN, axis=1) # 列名を小文字に修正
-    y = sample_data[TARGET_COLUMN].astype(int) # 列名を小文字に修正
+    X = sample_data.drop(TARGET_COLUMN, axis=1)  # 列名を小文字に修正
+    y = sample_data[TARGET_COLUMN].astype(int)  # 列名を小文字に修正
     X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42 # random_stateを固定
+        X, y, test_size=0.2, random_state=42  # random_stateを固定
     )
 
     # 同じパラメータで２つのモデルを作成
@@ -229,43 +286,54 @@ def test_model_reproducibility(sample_data, preprocessor):
     model1.fit(X_train, y_train)
     model2.fit(X_train, y_train)
 
-
     # 同じ予測結果になることを確認
     predictions1 = model1.predict(X_test)
     predictions2 = model2.predict(X_test)
 
     # ★ 追加: 再現性チェックの結果を表示 (成功なら差がないことを示す)
     is_reproducible = np.array_equal(predictions1, predictions2)
-    print(f"::notice::test_model_reproducibility: 再現性チェック = {'成功' if is_reproducible else '失敗'}", file=sys.stdout)
-
+    print(
+        f"::notice::test_model_reproducibility: 再現性チェック = {'成功' if is_reproducible else '失敗'}",
+        file=sys.stdout,
+    )
 
     assert is_reproducible, "モデルの予測結果に再現性がありません"
 
 
 # --- 修正・追加するベースライン比較テスト関数 ---
 # このテストで事前に保存した baseline_model.pkl をロードして比較します。
-def test_model_accuracy_above_baseline(train_model): # train_model フィクスチャを利用
+def test_model_accuracy_above_baseline(train_model):  # train_model フィクスチャを利用
     """
     現在のモデルの精度がベースラインモデルと比較して劣化していないかを検証
     （事前に保存した baseline_model.pkl をロードして比較）
     """
-    current_model, X_test, y_test = train_model # train_modelフィクスチャから取得したX_testは列名が小文字になっている想定
+    current_model, X_test, y_test = (
+        train_model  # train_modelフィクスチャから取得したX_testは列名が小文字になっている想定
+    )
 
     # ベースラインモデルをロード
     # test_model.py から見て ../models/baseline_model.pkl のパス
     # BASELINE_MODEL_PATH 変数はファイルの先頭で定義済み
     if not os.path.exists(BASELINE_MODEL_PATH):
         # ★ 追加: ベースラインモデルが存在しないことをnoticeで表示
-        print(f"::notice::ベースラインモデルファイルが見つかりません: {BASELINE_MODEL_PATH}", file=sys.stdout)
+        print(
+            f"::notice::ベースラインモデルファイルが見つかりません: {BASELINE_MODEL_PATH}",
+            file=sys.stdout,
+        )
         pytest.fail(f"ベースラインモデルファイルが存在しません: {BASELINE_MODEL_PATH}")
 
     try:
         with open(BASELINE_MODEL_PATH, "rb") as f:
             baseline_model = pickle.load(f)
-        print(f"::notice::ベースラインモデルをロードしました: {BASELINE_MODEL_PATH}", file=sys.stdout) # ★ 追加: ロード成功通知
+        print(
+            f"::notice::ベースラインモデルをロードしました: {BASELINE_MODEL_PATH}",
+            file=sys.stdout,
+        )  # ★ 追加: ロード成功通知
     except Exception as e:
         # ★ 追加: ロード失敗をerrorで表示
-        print(f"::error::ベースラインモデルのロードに失敗しました: {e}", file=sys.stderr) # エラーはstderrへ
+        print(
+            f"::error::ベースラインモデルのロードに失敗しました: {e}", file=sys.stderr
+        )  # エラーはstderrへ
         pytest.fail(f"ベースラインモデルのロードに失敗しました: {e}")
 
     # 現在のモデルで予測・精度計算
@@ -274,18 +342,26 @@ def test_model_accuracy_above_baseline(train_model): # train_model フィクス�
 
     # ベースラインモデルで予測・精度計算
     # ベースラインモデルも同じテストデータX_testに対して評価する
-    y_pred_baseline = baseline_model.predict(X_test) # X_testの列名がベースラインモデルの期待する形式になっている必要がある
+    y_pred_baseline = baseline_model.predict(
+        X_test
+    )  # X_testの列名がベースラインモデルの期待する形式になっている必要がある
     accuracy_baseline = accuracy_score(y_test, y_pred_baseline)
 
     # ★ 追加: 現在の精度とベースライン精度を notice で表示
-    print(f"::notice::test_model_accuracy_above_baseline: 現在のモデル精度 = {accuracy_current:.4f}", file=sys.stdout)
-    print(f"::notice::test_model_accuracy_above_baseline: ベースラインモデル精度 = {accuracy_baseline:.4f}", file=sys.stdout)
-
+    print(
+        f"::notice::test_model_accuracy_above_baseline: 現在のモデル精度 = {accuracy_current:.4f}",
+        file=sys.stdout,
+    )
+    print(
+        f"::notice::test_model_accuracy_above_baseline: ベースラインモデル精度 = {accuracy_baseline:.4f}",
+        file=sys.stdout,
+    )
 
     # 現在のモデル精度がベースライン精度以上であることを検証
     # 必要に応じて許容誤差 (tolerance) を設定しても良い
-    assert accuracy_current >= accuracy_baseline, \
-        f"現在のモデル精度 ({accuracy_current:.4f}) がベースライン ({accuracy_baseline:.4f}) より低くなっています！"
+    assert (
+        accuracy_current >= accuracy_baseline
+    ), f"現在のモデル精度 ({accuracy_current:.4f}) がベースライン ({accuracy_baseline:.4f}) より低くなっています！"
 
 
 # --- 演習2 main.py からのインポート部分と関連テスト ---
@@ -302,107 +378,155 @@ enshu2_path = os.path.join(base_path, "演習2")
 # 推奨されるのは、演習2のコードをパッケージとして適切にインポートするか、
 # 演習3のコード内で必要な関数/クラスを再定義することです。
 # 宿題の文脈では動作すれば良い場合もありますが、実務では注意が必要です。
-if enshu2_path not in sys.path: # ★ 追加: 重複して追加しないようにチェック
+if enshu2_path not in sys.path:  # ★ 追加: 重複して追加しないようにチェック
     sys.path.append(enshu2_path)
 
 # try-except ImportError を追加すると、演習2のファイルが見つからない場合でも
 # エラーを回避できますが、宿題ではファイルがある前提とします。
-try: # ★ 追加: インポートエラーを捕捉
-    from main import DataLoader as Enshu2DataLoader, ModelTester as Enshu2ModelTester # ★ 演習2のクラス名を変更して区別
+try:  # ★ 追加: インポートエラーを捕捉
+    from main import (
+        DataLoader as Enshu2DataLoader,
+        ModelTester as Enshu2ModelTester,
+    )  # ★ 演習2のクラス名を変更して区別
 except ImportError:
-     print(f"::warning::演習2のmain.pyが見つからないため、関連テストをスキップします。パス: {enshu2_path}", file=sys.stdout) # ★ 追加: 警告通知
-     # 演習2のクラスが見つからなかったことを示すグローバルフラグなどを設定し、
-     # 関連するテスト関数に pytest.mark.skipif を適用するのがより Pytest 的な方法です。
-     # ここではシンプルに、クラスが見つからなかった場合は関連テスト関数を定義しないことでスキップと同等の効果を得ます。
-     Enshu2DataLoader = None
-     Enshu2ModelTester = None
+    print(
+        f"::warning::演習2のmain.pyが見つからないため、関連テストをスキップします。パス: {enshu2_path}",
+        file=sys.stdout,
+    )  # ★ 追加: 警告通知
+    # 演習2のクラスが見つからなかったことを示すグローバルフラグなどを設定し、
+    # 関連するテスト関数に pytest.mark.skipif を適用するのがより Pytest 的な方法です。
+    # ここではシンプルに、クラスが見つからなかった場合は関連テスト関数を定義しないことでスキップと同等の効果を得ます。
+    Enshu2DataLoader = None
+    Enshu2ModelTester = None
 
 
 # 演習2のクラスが見つかった場合のみ、関連フィクスチャとテストを定義
 if Enshu2DataLoader is not None and Enshu2ModelTester is not None:
 
     @pytest.fixture(scope="module")
-    def trained_model_and_data_from_enshu2(): # フィクスチャ名を変更して重複を避ける
+    def trained_model_and_data_from_enshu2():  # フィクスチャ名を変更して重複を避ける
         """演習2のクラスを使ってモデル学習とテストデータの準備"""
         data = Enshu2DataLoader.load_titanic_data()
         # 演習2のDataLoaderが返すデータの列名形式に注意が必要
         # ここでも列名を小文字に変換する処理を追加するのが安全
         if isinstance(data, pd.DataFrame):
-             data.columns = data.columns.str.lower() # ★ 追加: 列名を小文字に変換
-
+            data.columns = data.columns.str.lower()  # ★ 追加: 列名を小文字に変換
 
         # 必要な特徴量列のみを選択（演習2のDataLoader/ModelTesterが不要な列を削除しているか不明なため安全策）
         # 目的変数カラムも加えておく
         required_columns_with_target = BASELINE_FEATURE_COLUMNS + [TARGET_COLUMN]
         # 必要な列が存在するかチェック
-        missing_cols = [col for col in required_columns_with_target if col not in data.columns]
+        missing_cols = [
+            col for col in required_columns_with_target if col not in data.columns
+        ]
         if missing_cols:
-             print(f"::error::演習2クラス使用: ロードしたデータに不足している列があります: {missing_cols}", file=sys.stderr)
-             pytest.fail(f"演習2クラス使用: ロードしたデータに不足している列があります: {missing_cols}")
+            print(
+                f"::error::演習2クラス使用: ロードしたデータに不足している列があります: {missing_cols}",
+                file=sys.stderr,
+            )
+            pytest.fail(
+                f"演習2クラス使用: ロードしたデータに不足している列があります: {missing_cols}"
+            )
 
-        data = data[required_columns_with_target].copy() # 必要な列を選択し、コピーを作成
-
+        data = data[
+            required_columns_with_target
+        ].copy()  # 必要な列を選択し、コピーを作成
 
         # preprocess_titanic_dataがXとyを返す想定だが、
         # Enshu2DataLoader.load_titanic_dataでsurvived列を含んだDataFrameを返しているので、
         # ここでは単にXとyに分割する処理を行う（演習3のDataLoaderと同様の修正を適用）
-        if isinstance(data, pd.DataFrame) and TARGET_COLUMN in data.columns: # dataにsurvived列を含む場合
-             y = data[TARGET_COLUMN]
-             X = data.drop(TARGET_COLUMN, axis=1)
+        if (
+            isinstance(data, pd.DataFrame) and TARGET_COLUMN in data.columns
+        ):  # dataにsurvived列を含む場合
+            y = data[TARGET_COLUMN]
+            X = data.drop(TARGET_COLUMN, axis=1)
         else:
-             print(f"::error::演習2クラス使用: データに '{TARGET_COLUMN}' 列が見つかりません。", file=sys.stderr)
-             pytest.fail(f"演習2クラス使用: データに '{TARGET_COLUMN}' 列が見つかりません。")
-
+            print(
+                f"::error::演習2クラス使用: データに '{TARGET_COLUMN}' 列が見つかりません。",
+                file=sys.stderr,
+            )
+            pytest.fail(
+                f"演習2クラス使用: データに '{TARGET_COLUMN}' 列が見つかりません。"
+            )
 
         # データの分割（学習はtrainデータ、評価はtestデータを使用）
         X_train, X_test, y_train, y_test = train_test_split(
-            X, y, test_size=0.2, random_state=42 # random_stateを固定
+            X, y, test_size=0.2, random_state=42  # random_stateを固定
         )
-        model = Enshu2ModelTester.train_model(X_train, y_train) # trainデータで学習
-        print(f"::notice::演習2クラス使用: モデル学習が完了しました。", file=sys.stdout) # ★ 追加: 学習完了通知
-        return model, X_test, y_test # testデータと学習済みモデルを返す
+        model = Enshu2ModelTester.train_model(X_train, y_train)  # trainデータで学習
+        print(
+            f"::notice::演習2クラス使用: モデル学習が完了しました。", file=sys.stdout
+        )  # ★ 追加: 学習完了通知
+        return model, X_test, y_test  # testデータと学習済みモデルを返す
 
-
-    def test_model_performance_enshu2(trained_model_and_data_from_enshu2): # 関数名を変更
+    def test_model_performance_enshu2(
+        trained_model_and_data_from_enshu2,
+    ):  # 関数名を変更
         """演習2クラス使用: モデル性能のテスト (精度と推論時間)"""
-        model, X_test, y_test = trained_model_and_data_from_enshu2 # X_testは列名が小文字になっている想定
+        model, X_test, y_test = (
+            trained_model_and_data_from_enshu2  # X_testは列名が小文字になっている想定
+        )
         metrics = Enshu2ModelTester.evaluate_model(model, X_test, y_test)
 
         # ★ 追加: GitHub Actions の notice コマンド形式で精度と推論時間を表示
-        print(f"::notice::test_model_performance_enshu2: 精度 = {metrics['accuracy']:.4f}", file=sys.stdout)
-        print(f"::notice::test_model_performance_enshu2: 推論時間 = {metrics['inference_time']:.4f}秒", file=sys.stdout)
+        print(
+            f"::notice::test_model_performance_enshu2: 精度 = {metrics['accuracy']:.4f}",
+            file=sys.stdout,
+        )
+        print(
+            f"::notice::test_model_performance_enshu2: 推論時間 = {metrics['inference_time']:.4f}秒",
+            file=sys.stdout,
+        )
 
-        assert metrics["accuracy"] >= 0.75, f"精度が低すぎます: {metrics['accuracy']:.4f}"
+        assert (
+            metrics["accuracy"] >= 0.75
+        ), f"精度が低すぎます: {metrics['accuracy']:.4f}"
         assert (
             metrics["inference_time"] < 1.0
         ), f"推論時間が長すぎます: {metrics['inference_time']:.3f}秒"
 
-
     # --- 修正・追加するベースライン比較テスト関数 (演習2クラス使用版) ---
     # このテストで事前に保存した baseline_model.pkl をロードして比較します。
-    def test_model_accuracy_above_baseline_enshu2(trained_model_and_data_from_enshu2): # 関数名を変更
+    def test_model_accuracy_above_baseline_enshu2(
+        trained_model_and_data_from_enshu2,
+    ):  # 関数名を変更
         """
         演習2クラス使用: 現在のモデルの精度がベースラインモデルと比較して劣化していないかを検証
         （事前に保存した baseline_model.pkl をロードして比較）
         """
-        current_model, X_test, y_test = trained_model_and_data_from_enshu2 # X_testは列名が小文字になっている想定
+        current_model, X_test, y_test = (
+            trained_model_and_data_from_enshu2  # X_testは列名が小文字になっている想定
+        )
 
         # ベースラインモデルをロード
         # test_model.py から見て ../models/baseline_model.pkl のパス
         # BASELINE_MODEL_PATH 変数はファイルの先頭で定義済み
         if not os.path.exists(BASELINE_MODEL_PATH):
             # ★ 追加: ベースラインモデルが存在しないことをnoticeで表示
-            print(f"::notice::ベースラインモデルファイルが見つかりません: {BASELINE_MODEL_PATH}", file=sys.stdout)
-            pytest.fail(f"ベースラインモデルファイルが存在しません: {BASELINE_MODEL_PATH}")
+            print(
+                f"::notice::ベースラインモデルファイルが見つかりません: {BASELINE_MODEL_PATH}",
+                file=sys.stdout,
+            )
+            pytest.fail(
+                f"ベースラインモデルファイルが存在しません: {BASELINE_MODEL_PATH}"
+            )
 
         try:
             with open(BASELINE_MODEL_PATH, "rb") as f:
                 baseline_model = pickle.load(f)
-            print(f"::notice::演習2クラス使用: ベースラインモデルをロードしました: {BASELINE_MODEL_PATH}", file=sys.stdout) # ★ 追加: ロード成功通知
+            print(
+                f"::notice::演習2クラス使用: ベースラインモデルをロードしました: {BASELINE_MODEL_PATH}",
+                file=sys.stdout,
+            )  # ★ 追加: ロード成功通知
         except Exception as e:
             # ★ 追加: ロード失敗をerrorで表示
-            print(f"::error::演習2クラス使用: ベースラインモデルのロードに失敗しました: {e}", file=sys.stderr) # エラーはstderrへ
-            pytest.fail(f"演習2クラス使用: ベースラインモデルのロードに失敗しました: {e}")
+            print(
+                f"::error::演習2クラス使用: ベースラインモデルのロードに失敗しました: {e}",
+                file=sys.stderr,
+            )  # エラーはstderrへ
+            pytest.fail(
+                f"演習2クラス使用: ベースラインモデルのロードに失敗しました: {e}"
+            )
 
         # 現在のモデルで予測・精度計算
         y_pred_current = current_model.predict(X_test)
@@ -410,22 +534,30 @@ if Enshu2DataLoader is not None and Enshu2ModelTester is not None:
 
         # ベースラインモデルで予測・精度計算
         # ベースラインモデルも同じテストデータX_testに対して評価する
-        y_pred_baseline = baseline_model.predict(X_test) # X_testの列名がベースラインモデルの期待する形式になっている必要がある
+        y_pred_baseline = baseline_model.predict(
+            X_test
+        )  # X_testの列名がベースラインモデルの期待する形式になっている必要がある
         accuracy_baseline = accuracy_score(y_test, y_pred_baseline)
 
         # ★ 追加: 現在の精度とベースライン精度を notice で表示
-        print(f"::notice::test_model_accuracy_above_baseline_enshu2: 現在のモデル精度 = {accuracy_current:.4f}", file=sys.stdout)
-        print(f"::notice::test_model_accuracy_above_baseline_enshu2: ベースラインモデル精度 = {accuracy_baseline:.4f}", file=sys.stdout)
-
+        print(
+            f"::notice::test_model_accuracy_above_baseline_enshu2: 現在のモデル精度 = {accuracy_current:.4f}",
+            file=sys.stdout,
+        )
+        print(
+            f"::notice::test_model_accuracy_above_baseline_enshu2: ベースラインモデル精度 = {accuracy_baseline:.4f}",
+            file=sys.stdout,
+        )
 
         # 現在のモデル精度がベースライン精度以上であることを検証
         # 必要に応じて許容誤差 (tolerance) を設定しても良い
-        assert accuracy_current >= accuracy_baseline, \
-            f"演習2クラス使用: 現在のモデル精度 ({accuracy_current:.4f}) がベースライン ({accuracy_baseline:.4f}) より低くなっています！"
+        assert (
+            accuracy_current >= accuracy_baseline
+        ), f"演習2クラス使用: 現在のモデル精度 ({accuracy_current:.4f}) がベースライン ({accuracy_baseline:.4f}) より低くなっています！"
 
 else:
     # 演習2のクラスが見つからなかった場合、関連するテストをスキップする
     # pytest の skip マーカを動的に適用する方法はいくつかありますが、
     # シンプルにテスト関数を定義しないことでスキップと同等の効果を得ます。
     # より明示的にスキップしたい場合は、pytest.mark.skipif を使用します。
-    pass # テスト関数が定義されないため、pytest はこれらのテスト
+    pass  # テスト関数が定義されないため、pytest はこれらのテスト
