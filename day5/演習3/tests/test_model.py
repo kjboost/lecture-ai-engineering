@@ -44,9 +44,17 @@ BASELINE_FEATURE_COLUMNS = [
 ]
 TARGET_COLUMN = "survived"
 
-# 演習2のコードが期待するであろう列名と順序（ログから推測）
-# エラーログから Age, Fare, SibSp, Parch が大文字始まりと推測
-ENSHU2_EXPECTED_COLUMNS = ["Pclass", "Sex", "Age", "SibSp", "Parch", "Fare", "Embarked"]
+# 演習2のコードおよびベースラインモデルが期待するであろう列名と順序（ログから推測）
+# エラーログから Age, Fare, SibSp, Parch, Pclass, Sex, Embarked が大文字始まりと推測
+ENSHU2_AND_BASELINE_EXPECTED_COLUMNS = [
+    "Pclass",
+    "Sex",
+    "Age",
+    "SibSp",
+    "Parch",
+    "Fare",
+    "Embarked",
+]
 
 
 @pytest.fixture
@@ -472,8 +480,8 @@ if Enshu2DataLoader is not None and Enshu2ModelTester is not None:
         # 演習2が期待する順序に列を並べ替え (存在しない列はエラーになるので注意)
         try:
             X_train_enshu2 = X_train_enshu2[
-                ENSHU2_EXPECTED_COLUMNS
-            ]  # ★ 追加: 列の並べ替え
+                ENSHU2_AND_BASELINE_EXPECTED_COLUMNS
+            ]  # ★ 修正: 列の並べ替えに使用するリストを修正
         except KeyError as e:
             print(
                 f"::error::演習2クラス使用: 学習用データ変換エラー - 期待する列の一部がデータに存在しません: {e}",
@@ -539,8 +547,8 @@ if Enshu2DataLoader is not None and Enshu2ModelTester is not None:
         # 演習2が期待する順序に列を並べ替え (存在しない列はエラーになるので注意)
         try:
             X_test_enshu2 = X_test_enshu2[
-                ENSHU2_EXPECTED_COLUMNS
-            ]  # ★ 追加: 列の並べ替え
+                ENSHU2_AND_BASELINE_EXPECTED_COLUMNS
+            ]  # ★ 修正: 列の並べ替えに使用するリストを修正
         except KeyError as e:
             print(
                 f"::error::演習2クラス使用: 評価用データ変換エラー - 期待する列の一部がデータに存在しません: {e}",
@@ -608,16 +616,56 @@ if Enshu2DataLoader is not None and Enshu2ModelTester is not None:
             trained_model_and_data_from_enshu2  # X_testは列名が小文字になっている想定
         )
 
-        # 演習2クラス使用のテストでは、ベースラインモデルに渡すデータも小文字の列名を使用
-        # ベースラインモデルは test_model.py の preprocessor と同じ列名（小文字）で学習されているはず
+        # 演習2クラス使用のテストでは、ベースラインモデルに渡すデータもベースラインモデルが期待する形式に変換
+        # baseline_model.pkl は create_baseline_model.py で作成されており、
+        # create_baseline_model.py の ColumnTransformer は ENSHU2_AND_BASELINE_EXPECTED_COLUMNS と同じ列名（大文字始まり）を期待していると推測される
+        column_mapping_to_baseline = {
+            "pclass": "Pclass",
+            "sex": "Sex",
+            "age": "Age",
+            "sibsp": "SibSp",
+            "parch": "Parch",
+            "fare": "Fare",
+            "embarked": "Embarked",
+        }
+        X_test_baseline = X_test.copy()
+        # マッピングに基づいて列名を変換
+        X_test_baseline.rename(columns=column_mapping_to_baseline, inplace=True)
+        # ベースラインモデルが期待する順序に列を並べ替え (存在しない列はエラーになるので注意)
+        try:
+            X_test_baseline = X_test_baseline[
+                ENSHU2_AND_BASELINE_EXPECTED_COLUMNS
+            ]  # ★ 修正: 列の並べ替えに使用するリストを修正
+        except KeyError as e:
+            print(
+                f"::error::演習2クラス使用: ベースライン比較用データ変換エラー - 期待する列の一部がデータに存在しません: {e}",
+                file=sys.stderr,
+            )
+            pytest.fail(
+                f"演習2クラス使用: ベースライン比較用データ変換エラー - 期待する列の一部がデータに存在しません: {e}"
+            )
+
+        # データ型を標準化（任意だが安全のため）
+        # ベースラインモデルのColumnTransformerが期待する型に合わせる必要がある
+        try:
+            X_test_baseline = X_test_baseline.astype(
+                {col: "float64" for col in ["Age", "Fare"]}
+                | {col: "object" for col in ["Sex", "Embarked"]}
+                | {col: "int64" for col in ["Pclass", "SibSp", "Parch"]}
+            )  # ★ 追加: データ型の標準化
+        except Exception as e:
+            print(
+                f"::warning::演習2クラス使用: ベースライン比較用データ型変換エラー: {e}",
+                file=sys.stdout,
+            )
 
         # ★ 追加: ベースライン比較(演習2)に渡す直前の列名と型を出力
         print(
-            f"::notice::演習2クラス使用: ベースライン比較用データ(X_test)の列名: {list(X_test.columns)}",
+            f"::notice::演習2クラス使用: ベースライン比較用データ(X_test_baseline)の列名: {list(X_test_baseline.columns)}",
             file=sys.stdout,
         )
         print(
-            f"::notice::演習2クラス使用: ベースライン比較用データ(X_test)のデータ型:\n{X_test.dtypes}",
+            f"::notice::演習2クラス使用: ベースライン比較用データ(X_test_baseline)のデータ型:\n{X_test_baseline.dtypes}",
             file=sys.stdout,
         )
 
@@ -678,15 +726,15 @@ if Enshu2DataLoader is not None and Enshu2ModelTester is not None:
 
         # 現在のモデルで予測・精度計算
         y_pred_current = current_model.predict(
-            X_test
-        )  # ★ 修正: 小文字の列名データで予測
+            X_test_baseline
+        )  # ★ 修正: 変換・並べ替え後のデータで予測
         accuracy_current = accuracy_score(y_test, y_pred_current)
 
         # ベースラインモデルで予測・精度計算
         # ベースラインモデルも同じテストデータX_testに対して評価する
         y_pred_baseline = baseline_model.predict(
-            X_test
-        )  # ★ 修正: 小文字の列名データで予測
+            X_test_baseline
+        )  # ★ 修正: 変換・並べ替え後のデータで予測
         accuracy_baseline = accuracy_score(y_test, y_pred_baseline)
 
         # ★ 追加: 現在の精度とベースライン精度を notice で表示
