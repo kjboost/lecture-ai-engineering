@@ -45,8 +45,8 @@ BASELINE_FEATURE_COLUMNS = [
 TARGET_COLUMN = "survived"
 
 # 演習2のコードが期待するであろう列名と順序（ログから推測）
-# 演習2のColumnTransformerも小文字を期待していると推測されるため、このリストは参考用
-# ENSHU2_EXPECTED_COLUMNS = ['Pclass', 'Sex', 'Age', 'SibSp', 'Parch', 'Fare', 'Embarked']
+# エラーログから Age, Fare, SibSp, Parch が大文字始まりと推測
+ENSHU2_EXPECTED_COLUMNS = ["Pclass", "Sex", "Age", "SibSp", "Parch", "Fare", "Embarked"]
 
 
 @pytest.fixture
@@ -454,21 +454,62 @@ if Enshu2DataLoader is not None and Enshu2ModelTester is not None:
             X, y, test_size=0.2, random_state=42  # random_stateを固定
         )
 
-        # 演習2のModelTester.train_modelに渡すデータは小文字の列名を使用
+        # 演習2のModelTester.train_modelに渡す前に、列名を演習2が期待する形式に変換し、列順序を合わせる
+        # エラーログから期待される列名: ['Pclass', 'Sex', 'Age', 'SibSp', 'Parch', 'Fare', 'Embarked'] と推測
+        column_mapping_to_enshu2 = {
+            "pclass": "Pclass",
+            "sex": "Sex",
+            "age": "Age",
+            "sibsp": "SibSp",
+            "parch": "Parch",
+            "fare": "Fare",
+            "embarked": "Embarked",
+        }
+
+        X_train_enshu2 = X_train.copy()
+        # マッピングに基づいて列名を変換
+        X_train_enshu2.rename(columns=column_mapping_to_enshu2, inplace=True)
+        # 演習2が期待する順序に列を並べ替え (存在しない列はエラーになるので注意)
+        try:
+            X_train_enshu2 = X_train_enshu2[
+                ENSHU2_EXPECTED_COLUMNS
+            ]  # ★ 追加: 列の並べ替え
+        except KeyError as e:
+            print(
+                f"::error::演習2クラス使用: 学習用データ変換エラー - 期待する列の一部がデータに存在しません: {e}",
+                file=sys.stderr,
+            )
+            pytest.fail(
+                f"演習2クラス使用: 学習用データ変換エラー - 期待する列の一部がデータに存在しません: {e}"
+            )
+
+        # データ型を標準化（任意だが安全のため）
+        # 演習2のColumnTransformerが期待する型に合わせる必要がある
+        try:
+            X_train_enshu2 = X_train_enshu2.astype(
+                {col: "float64" for col in ["Age", "Fare"]}
+                | {col: "object" for col in ["Sex", "Embarked"]}
+                | {col: "int64" for col in ["Pclass", "SibSp", "Parch"]}
+            )  # ★ 追加: データ型の標準化
+        except Exception as e:
+            print(
+                f"::warning::演習2クラス使用: 学習用データ型変換エラー: {e}",
+                file=sys.stdout,
+            )
 
         # ★ 追加: 演習2の学習に渡す直前の列名と型を出力
         print(
-            f"::notice::演習2クラス使用: 学習用データ(X_train)の列名: {list(X_train.columns)}",
+            f"::notice::演習2クラス使用: 学習用データ(X_train_enshu2)の列名: {list(X_train_enshu2.columns)}",
             file=sys.stdout,
         )
         print(
-            f"::notice::演習2クラス使用: 学習用データ(X_train)のデータ型:\n{X_train.dtypes}",
+            f"::notice::演習2クラス使用: 学習用データ(X_train_enshu2)のデータ型:\n{X_train_enshu2.dtypes}",
             file=sys.stdout,
         )
 
         model = Enshu2ModelTester.train_model(
-            X_train, y_train
-        )  # ★ 修正: 小文字の列名データで学習
+            X_train_enshu2, y_train
+        )  # ★ 修正: 変換・並べ替え後のデータで学習
         print(
             f"::notice::演習2クラス使用: モデル学習が完了しました。", file=sys.stdout
         )  # ★ 追加: 学習完了通知
@@ -482,21 +523,60 @@ if Enshu2DataLoader is not None and Enshu2ModelTester is not None:
             trained_model_and_data_from_enshu2  # X_testは列名が小文字になっている想定
         )
 
-        # 演習2クラス使用のテストでは、評価データも小文字の列名を使用
+        # 演習2クラス使用のテストでは、X_testも演習2が期待する形式に変換し、列順序を合わせる必要がある
+        column_mapping_to_enshu2 = {
+            "pclass": "Pclass",
+            "sex": "Sex",
+            "age": "Age",
+            "sibsp": "SibSp",
+            "parch": "Parch",
+            "fare": "Fare",
+            "embarked": "Embarked",
+        }
+        X_test_enshu2 = X_test.copy()
+        # マッピングに基づいて列名を変換
+        X_test_enshu2.rename(columns=column_mapping_to_enshu2, inplace=True)
+        # 演習2が期待する順序に列を並べ替え (存在しない列はエラーになるので注意)
+        try:
+            X_test_enshu2 = X_test_enshu2[
+                ENSHU2_EXPECTED_COLUMNS
+            ]  # ★ 追加: 列の並べ替え
+        except KeyError as e:
+            print(
+                f"::error::演習2クラス使用: 評価用データ変換エラー - 期待する列の一部がデータに存在しません: {e}",
+                file=sys.stderr,
+            )
+            pytest.fail(
+                f"演習2クラス使用: 評価用データ変換エラー - 期待する列の一部がデータに存在しません: {e}"
+            )
+
+        # データ型を標準化（任意だが安全のため）
+        # 演習2のColumnTransformerが期待する型に合わせる必要がある
+        try:
+            X_test_enshu2 = X_test_enshu2.astype(
+                {col: "float64" for col in ["Age", "Fare"]}
+                | {col: "object" for col in ["Sex", "Embarked"]}
+                | {col: "int64" for col in ["Pclass", "SibSp", "Parch"]}
+            )  # ★ 追加: データ型の標準化
+        except Exception as e:
+            print(
+                f"::warning::演習2クラス使用: 評価用データ型変換エラー: {e}",
+                file=sys.stdout,
+            )
 
         # ★ 追加: 演習2の評価に渡す直前の列名と型を出力
         print(
-            f"::notice::演習2クラス使用: 評価用データ(X_test)の列名: {list(X_test.columns)}",
+            f"::notice::演習2クラス使用: 評価用データ(X_test_enshu2)の列名: {list(X_test_enshu2.columns)}",
             file=sys.stdout,
         )
         print(
-            f"::notice::演習2クラス使用: 評価用データ(X_test)のデータ型:\n{X_test.dtypes}",
+            f"::notice::演習2クラス使用: 評価用データ(X_test_enshu2)のデータ型:\n{X_test_enshu2.dtypes}",
             file=sys.stdout,
         )
 
         metrics = Enshu2ModelTester.evaluate_model(
-            model, X_test, y_test
-        )  # ★ 修正: 小文字の列名データで評価
+            model, X_test_enshu2, y_test
+        )  # ★ 修正: 変換・並べ替え後のデータで評価
 
         # ★ 追加: GitHub Actions の notice コマンド形式で精度と推論時間を表示
         print(
@@ -529,6 +609,7 @@ if Enshu2DataLoader is not None and Enshu2ModelTester is not None:
         )
 
         # 演習2クラス使用のテストでは、ベースラインモデルに渡すデータも小文字の列名を使用
+        # ベースラインモデルは test_model.py の preprocessor と同じ列名（小文字）で学習されているはず
 
         # ★ 追加: ベースライン比較(演習2)に渡す直前の列名と型を出力
         print(
