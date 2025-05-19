@@ -540,22 +540,6 @@ if Enshu2DataLoader is not None and Enshu2ModelTester is not None:
             file=sys.stdout,
         )
 
-        # ★ 追加: ベースラインモデルのpreprocessorが期待する列名を出力
-        try:
-            # ベースラインモデルの最初のステップがColumnTransformerであると仮定
-            baseline_preprocessor_feature_names_in = baseline_model.steps[0][
-                1
-            ].feature_names_in_
-            print(
-                f"::notice::演習2クラス使用: ベースラインモデルpreprocessor期待列名: {list(baseline_preprocessor_feature_names_in)}",
-                file=sys.stdout,
-            )
-        except Exception as e:
-            print(
-                f"::warning::演習2クラス使用: ベースラインモデルpreprocessor期待列名取得失敗: {e}",
-                file=sys.stdout,
-            )
-
         # ベースラインモデルをロード
         # test_model.py から見て ../models/baseline_model.pkl のパス
         # BASELINE_MODEL_PATH 変数はファイルの先頭で定義済み
@@ -576,6 +560,31 @@ if Enshu2DataLoader is not None and Enshu2ModelTester is not None:
                 f"::notice::演習2クラス使用: ベースラインモデルをロードしました: {BASELINE_MODEL_PATH}",
                 file=sys.stdout,
             )  # ★ 追加: ロード成功通知
+
+            # ★ 追加: ベースラインモデルのpreprocessorが期待する列名を出力
+            try:
+                # ベースラインモデルの最初のステップがColumnTransformerであると仮定
+                # ColumnTransformerがPipelineの最初のステップでない場合、このアクセスは失敗する可能性があります。
+                if isinstance(baseline_model.steps[0][1], ColumnTransformer):
+                    baseline_preprocessor_feature_names_in = baseline_model.steps[0][
+                        1
+                    ].feature_names_in_
+                    print(
+                        f"::notice::演習2クラス使用: ベースラインモデルpreprocessor期待列名: {list(baseline_preprocessor_feature_names_in)}",
+                        file=sys.stdout,
+                    )
+                else:
+                    print(
+                        f"::warning::演習2クラス使用: ベースラインモデルの最初のステップはColumnTransformerではありません。",
+                        file=sys.stdout,
+                    )
+
+            except Exception as e:
+                print(
+                    f"::warning::演習2クラス使用: ベースラインモデルpreprocessor期待列名取得失敗: {e}",
+                    file=sys.stdout,
+                )
+
         except Exception as e:
             # ★ 追加: ロード失敗をerrorで表示
             print(
