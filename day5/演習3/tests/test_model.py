@@ -12,9 +12,8 @@ from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 import sys  # ★ 追加: ワークフローコマンド出力に必要
-from itertools import (
-    chain,
-)  # ColumnTransformerのデバッグ情報に使用されているためインポート
+
+# from itertools import chain # ColumnTransformerのデバッグ情報に使用されているためインポート（不要なため削除）
 
 
 # Note: This script is designed to be run using the pytest framework.
@@ -453,7 +452,17 @@ if Enshu2DataLoader is not None and Enshu2ModelTester is not None:
         X_train, X_test, y_train, y_test = train_test_split(
             X, y, test_size=0.2, random_state=42  # random_stateを固定
         )
-        model = Enshu2ModelTester.train_model(X_train, y_train)  # trainデータで学習
+
+        # 演習2のModelTester.train_modelに渡す前に、列名を大文字に戻す
+        # 演習2のColumnTransformerが大文字の列名を期待しているため
+        X_train_upper = X_train.copy()
+        X_train_upper.columns = (
+            X_train_upper.columns.str.capitalize()
+        )  # ★ 追加: 列名を大文字に変換
+
+        model = Enshu2ModelTester.train_model(
+            X_train_upper, y_train
+        )  # ★ 修正: 大文字列名で学習
         print(
             f"::notice::演習2クラス使用: モデル学習が完了しました。", file=sys.stdout
         )  # ★ 追加: 学習完了通知
@@ -466,7 +475,15 @@ if Enshu2DataLoader is not None and Enshu2ModelTester is not None:
         model, X_test, y_test = (
             trained_model_and_data_from_enshu2  # X_testは列名が小文字になっている想定
         )
-        metrics = Enshu2ModelTester.evaluate_model(model, X_test, y_test)
+        # 演習2クラス使用のテストでは、X_testも大文字列名に変換してからモデルに渡す必要がある
+        X_test_upper = X_test.copy()
+        X_test_upper.columns = (
+            X_test_upper.columns.str.capitalize()
+        )  # ★ 追加: 列名を大文字に変換
+
+        metrics = Enshu2ModelTester.evaluate_model(
+            model, X_test_upper, y_test
+        )  # ★ 修正: 大文字列名で評価
 
         # ★ 追加: GitHub Actions の notice コマンド形式で精度と推論時間を表示
         print(
@@ -497,6 +514,12 @@ if Enshu2DataLoader is not None and Enshu2ModelTester is not None:
         current_model, X_test, y_test = (
             trained_model_and_data_from_enshu2  # X_testは列名が小文字になっている想定
         )
+
+        # 演習2クラス使用のテストでは、X_testも大文字列名に変換してからモデルに渡す必要がある
+        X_test_upper = X_test.copy()
+        X_test_upper.columns = (
+            X_test_upper.columns.str.capitalize()
+        )  # ★ 追加: 列名を大文字に変換
 
         # ベースラインモデルをロード
         # test_model.py から見て ../models/baseline_model.pkl のパス
@@ -529,14 +552,14 @@ if Enshu2DataLoader is not None and Enshu2ModelTester is not None:
             )
 
         # 現在のモデルで予測・精度計算
-        y_pred_current = current_model.predict(X_test)
+        y_pred_current = current_model.predict(X_test_upper)  # ★ 修正: 大文字列名で予測
         accuracy_current = accuracy_score(y_test, y_pred_current)
 
         # ベースラインモデルで予測・精度計算
         # ベースラインモデルも同じテストデータX_testに対して評価する
         y_pred_baseline = baseline_model.predict(
-            X_test
-        )  # X_testの列名がベースラインモデルの期待する形式になっている必要がある
+            X_test_upper
+        )  # ★ 修正: 大文字列名で予測
         accuracy_baseline = accuracy_score(y_test, y_pred_baseline)
 
         # ★ 追加: 現在の精度とベースライン精度を notice で表示
@@ -560,4 +583,4 @@ else:
     # pytest の skip マーカを動的に適用する方法はいくつかありますが、
     # シンプルにテスト関数を定義しないことでスキップと同等の効果を得ます。
     # より明示的にスキップしたい場合は、pytest.mark.skipif を使用します。
-    pass  # テスト関数が定義されないため、pytest はこれらのテスト
+    pass  # テスト関数が定義されないため、pytest はこれらのテストを認識しません
