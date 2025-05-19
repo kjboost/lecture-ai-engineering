@@ -694,7 +694,7 @@ if Enshu2DataLoader is not None and Enshu2ModelTester is not None:
         if not os.path.exists(BASELINE_MODEL_PATH):
             # ★ 追加: ベースラインモデルが存在しないことをnoticeで表示
             print(
-                f"::notice::ベースラインモデルファイルが見つかりません: {BASELINE_MODEL_MODEL_PATH}",
+                f"::notice::ベースラインモデルファイルが見つかりません: {BASELINE_MODEL_PATH}",
                 file=sys.stdout,
             )
             pytest.fail(
