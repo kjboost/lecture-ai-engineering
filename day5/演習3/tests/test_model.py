@@ -12,8 +12,9 @@ from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 import sys  # ★ 追加: ワークフローコマンド出力に必要
-
-# from itertools import chain # ColumnTransformerのデバッグ情報に使用されているためインポート（不要なため削除）
+from itertools import (
+    chain,
+)  # ColumnTransformerのデバッグ情報に使用されているためインポート
 
 
 # Note: This script is designed to be run using the pytest framework.
@@ -146,8 +147,16 @@ def preprocessor():
     # ColumnTransformerに渡す特徴量列名は、ベースラインモデル学習時と同じである必要がある
     preprocessor = ColumnTransformer(
         transformers=[
-            ("num", numeric_features, numeric_transformer),  # 列名を直接指定
-            ("cat", categorical_features, categorical_transformer),  # 列名を直接指定
+            (
+                "num",
+                numeric_transformer,
+                numeric_features,
+            ),  # ★ 修正: 列名リストとトランスフォーマーの位置を修正
+            (
+                "cat",
+                categorical_transformer,
+                categorical_features,
+            ),  # ★ 修正: 列名リストとトランスフォーマーの位置を修正
         ],
         remainder="drop",  # 指定されていない列は削除
     )
@@ -530,6 +539,22 @@ if Enshu2DataLoader is not None and Enshu2ModelTester is not None:
             f"::notice::演習2クラス使用: ベースライン比較用データ(X_test)のデータ型:\n{X_test.dtypes}",
             file=sys.stdout,
         )
+
+        # ★ 追加: ベースラインモデルのpreprocessorが期待する列名を出力
+        try:
+            # ベースラインモデルの最初のステップがColumnTransformerであると仮定
+            baseline_preprocessor_feature_names_in = baseline_model.steps[0][
+                1
+            ].feature_names_in_
+            print(
+                f"::notice::演習2クラス使用: ベースラインモデルpreprocessor期待列名: {list(baseline_preprocessor_feature_names_in)}",
+                file=sys.stdout,
+            )
+        except Exception as e:
+            print(
+                f"::warning::演習2クラス使用: ベースラインモデルpreprocessor期待列名取得失敗: {e}",
+                file=sys.stdout,
+            )
 
         # ベースラインモデルをロード
         # test_model.py から見て ../models/baseline_model.pkl のパス
