@@ -73,7 +73,7 @@ def preprocessor():
     # カテゴリカル特徴量の前処理（欠損値補完とOne-hotエンコーディング）
     categorical_transformer = Pipeline(
         steps=[
-            ("imputer", SimpleImuter(strategy="most_frequent")),
+            ("imputer", SimpleImputer(strategy="most_frequent")),
             ("onehot", OneHotEncoder(handle_unknown="ignore")),
         ]
     )
