@@ -177,22 +177,24 @@ def test_new_model_accuracy_exceeds_baseline(capsys, sample_data):
         pytest.fail(f"従来モデルの処理に失敗しました: {e}")
 
     # === 新しいモデルの精度を取得 ===
-    # ここで新しいモデルの学習に改善を加える (例: n_estimatorsを増やす)
-    # n_estimatorsを100から150に増やすことで、精度向上を試みる
-    new_model_params = {"n_estimators": 150, "random_state": 42}
+    # ここで新しいモデルの学習に改善を加える (例: n_estimatorsを増やす, max_depthを設定)
+    # n_estimatorsを200に増やし、max_depthを8に設定することで、精度向上を試みる
+    new_model_params = {
+        "n_estimators": 200,
+        "max_depth": 8,
+        "random_state": 42,
+    }  # 変更点
     new_model = ModelTester.train_model(X_train, y_train, model_params=new_model_params)
     new_metrics = ModelTester.evaluate_model(new_model, X_test, y_test)
     new_accuracy = new_metrics["accuracy"]
 
     # GitHub Actionsの::noticeコマンドで新しい精度と従来精度を表示
     print(
-        f"::notice ::新しいモデルの精度: {new_accuracy:.4f} (n_estimators={new_model_params['n_estimators']})"
+        f"::notice ::新しいモデルの精度: {new_accuracy:.4f} (n_estimators={new_model_params['n_estimators']}, max_depth={new_model_params['max_depth']})"
     )
     print(f"::notice ::従来モデルの精度: {baseline_accuracy:.4f} (固定モデル)")
 
     # 新しい精度が従来精度を厳密に上回ることを検証
-    # 浮動小数点数の比較のため、わずかな差も考慮に入れるか、閾値を設定することも検討
-    # ここでは厳密に「より大きい」ことを検証
     assert (
         new_accuracy > baseline_accuracy
     ), f"新しいモデルの精度({new_accuracy:.4f})が従来モデルの精度({baseline_accuracy:.4f})を上回りません。"
