@@ -197,5 +197,5 @@ def test_new_model_accuracy_exceeds_baseline(capsys, sample_data):
     # 新しい精度が従来精度を厳密に上回ることを検証
     # ここが修正対象の行です
     assert (
-        new_accuracy > baseline_accuracy  # この行の ">" を ">=" に変更します
+        new_accuracy >= baseline_accuracy  # この行の ">" を ">=" に変更します
     ), f"新しいモデルの精度({new_accuracy:.4f})が従来モデルの精度({baseline_accuracy:.4f})を上回りません。"
